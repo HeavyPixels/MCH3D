@@ -276,144 +276,144 @@ begin
     'h0: // Init wait
     begin
       more_ctrl = 8'h00;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h1: // Reset Enable command
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 1;
       wrbuf_ctrl = 32'h01100110;
       start = 1;
     end
     'h2: // CS high
     begin
       more_ctrl = 8'h10;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h3: // Reset command
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 1;
       wrbuf_ctrl = 32'h10011001;
       start = 0;
     end
     'h4: // CS high
     begin
       more_ctrl = 8'h10;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h5: // Quad Mode Enable command
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 1;
       wrbuf_ctrl = 32'h00110101;
       start = 0;
     end
     'hF: // CS high
     begin
       more_ctrl = 8'h00;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h6: // Idle
     begin
       more_ctrl = 8'h00;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h7: // Read command
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 1;
       wrbuf_ctrl = {8'h0B, addr_buf, 4'h0};
       start = 1;
     end
     'h8: // Read wait
     begin
       more_ctrl = 8'h08;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'h9: // Read data 1
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h01;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 1;
+      rd_ctrl = 1;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'hA: // Read data 2
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h01;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 1;
+      rd_ctrl = 1;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end
     'hB: // Write command
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 0;
+      wr_ctrl = 1;
       wrbuf_ctrl = {8'h38, addr_buf, 4'h0};
       start = 1;
     end
     'hC: // Write data 1
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h01;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 1;
+      wr_ctrl = 1;
       wrbuf_ctrl = wrdata_buf[63:32];
       start = 0;
     end
     'hD: // Write data 2
     begin
       more_ctrl = 8'h01;
-      cs_ctrl = 8'hFF;
-      rd_ctrl = 8'h01;
-      wr_ctrl = 8'hFF;
+      cs_ctrl = 1;
+      rd_ctrl = 1;
+      wr_ctrl = 1;
       wrbuf_ctrl = wrdata_buf[31:0];
       start = 0;
     end
     default: // Idle
     begin
       more_ctrl = 8'h00;
-      cs_ctrl = 8'h00;
-      rd_ctrl = 8'h00;
-      wr_ctrl = 8'h00;
+      cs_ctrl = 0;
+      rd_ctrl = 0;
+      wr_ctrl = 0;
       wrbuf_ctrl = 32'h00000000;
       start = 0;
     end    

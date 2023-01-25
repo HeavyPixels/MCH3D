@@ -22,8 +22,8 @@ wire [23:0] addr = {
   v[7], u[7], v[6], u[6], v[5], u[5], v[4], u[4],
   v[3], u[3], v[2], u[2], v[1], v[0], u[1], u[0]
 };
-reg [11:0] index;
 reg [7:0] tag;
+reg [11:0] index;
 reg [3:0] offset;
 
 reg [63:0] data_in_buf;
@@ -136,14 +136,14 @@ always@(posedge clk)
 begin
   if(rst)
   begin
-    index <= 12'h000;
     tag <= 8'h00;
+    index <= 12'h000;
     offset <= 4'h0;
   end    
   else if(accept)
   begin
-    index <= addr[23:12];
-    tag <= addr[11:4];
+    tag <= addr[23:16];
+    index <= addr[16:4];
     offset <= addr[3:0];
   end
 end

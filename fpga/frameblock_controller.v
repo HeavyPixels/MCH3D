@@ -97,6 +97,8 @@ begin
   end
 end
 
+reg frameblock_id[6:0];
+
 always@(posedge clk or posedge rst)
 begin
   if(rst)

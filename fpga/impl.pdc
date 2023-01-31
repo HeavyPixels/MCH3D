@@ -6,14 +6,14 @@ ldc_set_location -site {15} [get_ports spi_clk]
 ldc_set_location -site {16} [get_ports spi_cs_n]
 ldc_set_location -site {17} [get_ports spi_mosi]
 ldc_set_location -site {14} [get_ports spi_miso]
-#
-#ldc_set_location -site {21} [get_ports {ram_io[0]}]
-#ldc_set_location -site {13} [get_ports {ram_io[1]}]
-#ldc_set_location -site {12} [get_ports {ram_io[2]}]
-#ldc_set_location -site {20} [get_ports {ram_io[3]}]
-#ldc_set_location -site {19} [get_ports ram_clk]
-#ldc_set_location -site {18} [get_ports ram_cs_n]
-#
+
+ldc_set_location -site {21} [get_ports {ram_io[0]}]
+ldc_set_location -site {13} [get_ports {ram_io[1]}]
+ldc_set_location -site {12} [get_ports {ram_io[2]}]
+ldc_set_location -site {20} [get_ports {ram_io[3]}]
+ldc_set_location -site {19} [get_ports ram_clk]
+ldc_set_location -site {18} [get_ports ram_cs_n]
+
 ldc_set_location -site {26} [get_ports {lcd_d[0]}]
 ldc_set_location -site {27} [get_ports {lcd_d[1]}]
 ldc_set_location -site {31} [get_ports {lcd_d[2]}]

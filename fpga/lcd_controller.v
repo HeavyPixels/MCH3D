@@ -110,10 +110,11 @@ end
 
 reg [3:0] tile_state;
 
-reg [10:0] tile_counter;
-assign frameblock_addr = tile_counter[9:0];
+reg [2:0] tile_x;
+reg [7:0] tile_y;
+assign frameblock_addr = {tile_x[1:0], tile_y};
 
-wire count_done = ((frameblock_id[6:4] == 3'h7) && tile_counter == 11'h1FF) || (tile_counter == 11'h3FF);
+wire count_done = frameblock_addr == 11'h3EF;
 
 wire frameblock_pull = (tile_state == 4'hE) && lcd_command_pull;
 
@@ -121,22 +122,30 @@ always@(posedge clk or posedge rst)
 begin
   if(rst)
   begin
-    tile_counter <= 11'h400;
+    {tile_x, tile_y} <= 11'h400;
     frameblock_next <= 0;
   end
   else
   begin
-    if(((frameblock_id[6:4] == 3'h7) && tile_counter[9]) || tile_counter[10])
+    if(tile_x[2])
     begin
       frameblock_next <= 1;
-      tile_counter <= 11'h0;
+      {tile_x, tile_y} <= 11'h000;
     end
     else
     begin 
       frameblock_next <= 0;
       if(frameblock_pull)
       begin
-        tile_counter <= tile_counter + 11'h1;
+        if(tile_y == 8'hEF)
+        begin
+          tile_x <= tile_x + 1;
+          tile_y <= 8'h00;
+        end
+        else
+        begin
+          tile_y <= tile_y + 1;
+        end
       end
     end
   end
@@ -221,38 +230,35 @@ begin
     4'h1: begin // wait for ready
       tile_command_data <= 9'h100;
     end
-    4'h2: begin // CAS_command
-      tile_command_data <= 9'h12A;
-    end
-    4'h3: begin // CAS_SC_high
-      tile_command_data <= {8'h00, frameblock_id[3]};
-    end
-    4'h4: begin // CAS_SC_low
-      tile_command_data <= {frameblock_id[2:0], 5'h00};
-    end
-    4'h5: begin // CAS_EC_high
-      tile_command_data <= {8'h00, frameblock_id[3]};
-    end
-    4'h6: begin // CAS_EC_low
-      tile_command_data <= {frameblock_id[2:0], 5'h1F};
-    end
-    4'h7: begin // PAS_command
+    4'h2: begin // PAS_command
       tile_command_data <= 9'h12B;
     end
-    4'h8: begin // PAS_SP_high
+    4'h3: begin // PAS_SC_high
+      tile_command_data <= {8'h00, frameblock_id[6]};
+    end
+    4'h4: begin // PAS_SC_low
+      tile_command_data <= {1'h0, frameblock_id[5:0], 2'h0};
+    end
+    4'h5: begin // PAS_EC_high
+      tile_command_data <= {8'h00, frameblock_id[6]};
+    end
+    4'h6: begin // PAS_EC_low
+      tile_command_data <= {1'h0, frameblock_id[5:0], 2'h3};
+    end
+    4'h7: begin // CAS_command
+      tile_command_data <= 9'h12A;
+    end
+    4'h8: begin // CAS_SP_high
       tile_command_data <= 9'h000;
     end
-    4'h9: begin // PAS_SP_low
-      tile_command_data <= {frameblock_id[6:4], 5'h00};
-    end
-    4'hA: begin // PAS_EP_high
+    4'h9: begin // CAS_SP_low
       tile_command_data <= 9'h000;
     end
-    4'hB: begin // PAS_EP_low
-      if(frameblock_id[6:4] == 3'h7) // last row
-        tile_command_data <= {frameblock_id[6:4], 5'h0F};
-      else
-        tile_command_data <= {frameblock_id[6:4], 5'h1F};
+    4'hA: begin // CAS_EP_high
+      tile_command_data <= 9'h000;
+    end
+    4'hB: begin // CAS_EP_low
+      tile_command_data <= 9'h0EF;
     end
     4'hC: begin // MW_command
       tile_command_data <= 9'h12C;

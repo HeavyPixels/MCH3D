@@ -356,7 +356,7 @@ begin
     end
     'h8: // Read wait
     begin
-      more_ctrl = 8'h08;
+      more_ctrl = 8'h10; //8'h08
       cs_ctrl = 1;
       rd_ctrl = 0;
       wr_ctrl = 0;

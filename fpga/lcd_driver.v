@@ -17,18 +17,18 @@ module lcd_driver (
 wire [8:0] lcd_command_data;
 wire lcd_command_pull;
 
-reg [6:0] frameblock_internal;
-always@(posedge clk)
-begin
-  if(frameblock_next) frameblock_internal <= frameblock_id;
-end
+//reg [6:0] frameblock_internal;
+//always@(posedge clk)
+//begin
+//  if(frameblock_next) frameblock_internal <= frameblock_id;
+//end
 
 lcd_controller _lcd_controller (
   .clk( clk ),
   .rst( rst ),
   .frameblock_data( frameblock_data ),
   .frameblock_addr( frameblock_addr ),
-  .frameblock_id( frameblock_internal ),
+  .frameblock_id( frameblock_id ), //frameblock_internal
   .frameblock_next ( frameblock_next ),
   .frameblock_ready( frameblock_ready ),
   .lcd_command_data( lcd_command_data ),

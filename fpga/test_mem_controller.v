@@ -36,9 +36,22 @@ mem_controller _mem_controller (
 
 // Memory Stub
 reg [7:0] cmd;
+reg [1:0] cmd_count;
+reg ready_for_cmd = 1;
 always@(posedge ram_clk)
 begin
-  cmd <= {cmd[3:0], ram_io};
+  if(ready_for_cmd)
+  begin
+    cmd <= {cmd[3:0], ram_io};
+    cmd_count <= cmd_count + 1;
+    if(cmd_count[1])
+      ready_for_cmd <= 0;
+  end
+end
+
+always@*
+begin
+  if(ram_cs_n) ready_for_cmd <= 1;
 end
 
 reg read_mode = 0;

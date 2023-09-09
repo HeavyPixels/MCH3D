@@ -23,18 +23,24 @@ reg [7:0] y_end; // Note: original design had 1 additional bit to support a 0.0 
 reg [7:0] y_curr[0:2]; //
 reg [2:0] x_curr[0:2]; // +1bit for z-buffer polarity
 reg [25:0] z_curr[0:2], nz; // 1bit overflow + s.15.9
-reg [15:0] r_curr[0:2], nr; // 1bit overflow + s.5.9
-reg [16:0] g_curr[0:2], ng; // 1bit overflow + s.6.9
-reg [15:0] b_curr[0:2], nb; // 1bit overflow + s.5.9
+reg [15:0] r_curr[0:2], nr; // 1bit overflow + s. 5.9
+reg [16:0] g_curr[0:2], ng; // 1bit overflow + s. 6.9
+reg [15:0] b_curr[0:2], nb; // 1bit overflow + s. 5.9
+reg [22:0] u_curr[0:2], nu; // 1bit overflow + s.12.9
+reg [22:0] v_curr[0:2], nv; // 1bit overflow + s.12.9
 
 wire [25:0] z_add = z_curr[0] + nz; // o.s.15.9
-wire [15:0] r_add = r_curr[0] + nr; // o.s.5.9
-wire [16:0] g_add = g_curr[0] + ng; // o.s.6.9
-wire [15:0] b_add = b_curr[0] + nb; // o.s.5.9
+wire [15:0] r_add = r_curr[0] + nr; // o.s. 5.9
+wire [16:0] g_add = g_curr[0] + ng; // o.s. 6.9
+wire [15:0] b_add = b_curr[0] + nb; // o.s. 5.9
+wire [22:0] u_add = u_curr[0] + nu; // o.s.12.9
+wire [22:0] v_add = v_curr[0] + nv; // o.s.12.9
 wire [25:0] z_sub = z_curr[0] - nz; // o.s.15.9
-wire [15:0] r_sub = r_curr[0] - nr; // o.s.5.9
-wire [16:0] g_sub = g_curr[0] - ng; // o.s.6.9
-wire [15:0] b_sub = b_curr[0] - nb; // o.s.5.9
+wire [15:0] r_sub = r_curr[0] - nr; // o.s. 5.9
+wire [16:0] g_sub = g_curr[0] - ng; // o.s. 6.9
+wire [15:0] b_sub = b_curr[0] - nb; // o.s. 5.9
+wire [22:0] u_sub = u_curr[0] - nu; // o.s.12.9
+wire [22:0] v_sub = v_curr[0] - nv; // o.s.12.9
 
 always@(posedge clk)
 begin
@@ -44,12 +50,16 @@ begin
   r_curr[1] <= r_curr[0][15] ? 16'h0000 : r_curr[0][14] ? 16'h3FFF : r_curr[0];
   g_curr[1] <= g_curr[0][16] ? 17'h00000 : g_curr[0][15] ? 17'h07FFF : g_curr[0];
   b_curr[1] <= b_curr[0][15] ? 16'h0000 : b_curr[0][14] ? 16'h3FFF : b_curr[0];
+  u_curr[1] <= u_curr[0][22] ? 23'h00000 : u_curr[0][21] ? 23'h1FFFFF : u_curr[0];
+  v_curr[1] <= v_curr[0][22] ? 23'h00000 : v_curr[0][21] ? 23'h1FFFFF : v_curr[0];
   y_curr[2] <= y_curr[1];
   x_curr[2] <= x_curr[1];
   z_curr[2] <= z_curr[1];
   r_curr[2] <= r_curr[1];
   g_curr[2] <= g_curr[1];
   b_curr[2] <= b_curr[1];
+  u_curr[2] <= u_curr[1];
+  v_curr[2] <= v_curr[1];
 end
 
 // NOTE: Drawing in reverse
@@ -85,7 +95,9 @@ begin
     z_curr[0] = 'hx;
     r_curr[0] = 'hx;
     g_curr[0] = 'hx;
-    b_curr[0] = 'hx;   
+    b_curr[0] = 'hx;
+    u_curr[0] = 'hx;
+    v_curr[0] = 'hx;
   end
   else
   begin
@@ -96,7 +108,9 @@ begin
         z_curr[0] = 'hx;
         r_curr[0] = 'hx;
         g_curr[0] = 'hx;
-        b_curr[0] = 'hx;       
+        b_curr[0] = 'hx;
+        u_curr[0] = 'hx;
+        v_curr[0] = 'hx;
         if(span_start)
         begin
           state <= POP;
@@ -109,12 +123,14 @@ begin
         end
       end
       POP: begin
-        y_curr[0] = span_data[160:153]; y_end = span_data[152:145]; //[7:0]
-        x_curr[0] = span_data[144:142];                      // [2:0]
-        z_curr[0] = {span_data[141], span_data[141:117]}; nz = {span_data[116], span_data[116:92]};    //[24:0] s.15.9
-        r_curr[0] = {span_data[91], span_data[91:77]}; nr = {span_data[76], span_data[76:62]};    //[14:0] s.5.9
-        g_curr[0] = {span_data[61], span_data[61:46]}; ng = {span_data[45], span_data[45:30]};    //[15:0] s.6.9
-        b_curr[0] = {span_data[29], span_data[29:15]};   nb = {span_data[14], span_data[14:0]};    //[14:0] s.5.9
+        y_curr[0] = span_data[248:241]; y_end = span_data[240:233]; //[7:0]
+        x_curr[0] = span_data[232:230];                      // [2:0]
+        z_curr[0] = {span_data[229], span_data[229:205]}; nz = {span_data[204], span_data[204:180]};    //[24:0] s.15.9
+        r_curr[0] = {span_data[179], span_data[179:165]}; nr = {span_data[164], span_data[164:150]};    //[14:0] s.5.9
+        g_curr[0] = {span_data[149], span_data[149:134]}; ng = {span_data[133], span_data[133:118]};    //[15:0] s.6.9
+        b_curr[0] = {span_data[117], span_data[117:103]};   nb = {span_data[102], span_data[102:88]};    //[14:0] s.5.9
+        u_curr[0] = {span_data[87], span_data[87:66]};   nu = {span_data[65], span_data[65:44]};    //[21:0] s.12.9
+        v_curr[0] = {span_data[43], span_data[43:22]};   nv = {span_data[21], span_data[21:0]};    //[21:0] s.12.9
         if(y_curr[0] < y_end)
         begin
           draw[0] <= 1; // Draw inclusive of y_begin
@@ -147,6 +163,8 @@ begin
         r_curr[0] = r_add;
         g_curr[0] = g_add;
         b_curr[0] = b_add;
+        u_curr[0] = u_add;
+        v_curr[0] = v_add;
       end
       DRAW_BWD: begin
         if(y_curr[0] > y_end) // Draw inclusive of y_end
@@ -164,6 +182,8 @@ begin
         r_curr[0] = r_sub;
         g_curr[0] = g_sub;
         b_curr[0] = b_sub;
+        u_curr[0] = u_sub;
+        v_curr[0] = v_sub;
       end
     endcase
   end

@@ -1,4 +1,4 @@
-module top (
+module try_triangle_render (
   input  clk_in,
   
   // CPU Communication. Will be restored later
@@ -12,28 +12,31 @@ module top (
   output lcd_rs, // NOTE: Assumed to be LOW for command, HIGH for data
   output lcd_wr_n, // NOTE: Assumed to be triggered on RISING EDGE
   
+  output ram_clk,
+  output ram_cs_n,
+  inout [3:0] ram_io,
+  
   input lcd_mode
 );
-
-// Internal Oscillator
-//wire clk;
-/*HSOSC
-#(
-  .CLKHF_DIV (2'b00)
-) _hsosc (
-  .CLKHFPU (1),  // I
-  .CLKHFEN (1),  // I
-  .CLKHF   (clk)   // O
-);*/
 
 reg clk = 0;
 wire clk2;
 wire outcore_o;
 wire lock_o;
 
+// Sim only! Set .rst_n_i to 1'h1 for synthesis!
+//reg [2:0] pll_rst = 0;
+//always@(posedge clk_in)
+//begin
+//  if(!pll_rst[2])
+//    pll_rst <= pll_rst + 1;
+//end
+
+
 pll36 _pll (
   .ref_clk_i(clk_in), 
-  .rst_n_i(1'h1), 
+  //.rst_n_i(pll_rst[2]), // Sim
+  .rst_n_i(1'h1), // Synth
   .lock_o(lock_o), 
   .outcore_o(outcore_o), 
   .outglobal_o(clk2)
@@ -56,6 +59,7 @@ begin
   rst <= pll_lock & !reset_done; // Reset on rising edge of pll_lock
 end
 
+
 wire [239:0] spi_triangle_wrdata;
 wire spi_triangle_push;
 wire [239:0] calcline_triangle_wrdata;
@@ -70,6 +74,7 @@ wire triangle_pull;
 wire [248:0] span_data;
 wire span_start;
 wire span_done;
+wire [6:0] draw_id;
 wire draw_next;
 // ZBuffer
 wire [15:0] zbuf_wrdata;
@@ -86,8 +91,8 @@ wire [ 9:0] draw_rdaddr;
 wire        draw_ready;
 // LCD Driver
 wire [15:0] display_rddata;
-wire [ 9:0] display_rdaddr;
-wire [ 6:0] display_id;
+wire [ 9:0] display_rdaddr; // The address within the frameblock
+wire [ 6:0] display_id; // With the vertical stripes this is essentially frame_x[8:2]
 wire        display_next;
 wire        display_ready;
 
@@ -127,6 +132,15 @@ command_fifo _command_fifo(
   .empty(command_empty)
 );*/
 
+triangle_tester _triangle_tester(
+  .clk(clk),
+  .rst(rst),
+  .triangle_full(triangle_full),
+  .triangle_wrdata(spi_triangle_wrdata),
+  .triangle_push(spi_triangle_push),
+  .draw_next(draw_next)
+);
+
 fifo_arbiter #(
   .WIDTH(240)
 ) triangle_fifo_arbiter (
@@ -140,20 +154,15 @@ fifo_arbiter #(
   .push_out(triangle_push)
 );
 
-assign triangle_full = !triangle_empty;
-basicfifo #(
-  .WIDTH(240),
-  .LOG_DEPTH(8)//,
-//  .ALMOST_FULL(1)
-) triangle_fifo(
+triangle_fifo _triangle_fifo(
   .clk(clk),
   .rst(rst),
   .data_in(triangle_wrdata),
   .push(triangle_push),
-  //.almost_full(triangle_full),
+  .almost_full(triangle_full),
   .data_out(triangle_rddata),
   .pull(triangle_pull),
-  .empty(triangle_empty)
+  .almost_empty(triangle_empty)
 );
 
 calcline _calcline(
@@ -213,6 +222,7 @@ frameblock_controller _frameblock_controller (
   .display_ready(display_ready)
 );
 
+// LCD ready stabilization
 reg [7:0] lcd_ready_buf;
 wire lcd_ready = (lcd_ready_buf == 8'hFF);
 always@(posedge clk or posedge rst)
@@ -248,5 +258,5 @@ assign lcd_cs_n = lcd_ready ? i_lcd_cs : 1'bz;
 assign lcd_wr_n = lcd_ready ? i_lcd_wr : 1'bz;
 assign lcd_rs = lcd_ready ? i_lcd_rs : 1'bz;
 assign lcd_d = lcd_ready ? i_lcd_d : 8'bzzzzzzzz;
-	
+
 endmodule

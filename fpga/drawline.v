@@ -2,7 +2,7 @@ module drawline(
   input clk,
   input rst,
   // CalcLine
-  input [160:0] span_data,
+  input [248:0] span_data,
   input span_start,
   output reg span_done,
   // ZBuffer
@@ -46,12 +46,12 @@ always@(posedge clk)
 begin
   y_curr[1] <= y_curr[0];
   x_curr[1] <= x_curr[0];
-  z_curr[1] <= z_curr[0][25] ? 26'h00000 : z_curr[0][24] ? 26'h7FFFF : z_curr[0];
-  r_curr[1] <= r_curr[0][15] ? 16'h0000 : r_curr[0][14] ? 16'h3FFF : r_curr[0];
-  g_curr[1] <= g_curr[0][16] ? 17'h00000 : g_curr[0][15] ? 17'h07FFF : g_curr[0];
-  b_curr[1] <= b_curr[0][15] ? 16'h0000 : b_curr[0][14] ? 16'h3FFF : b_curr[0];
-  u_curr[1] <= u_curr[0][22] ? 23'h00000 : u_curr[0][21] ? 23'h1FFFFF : u_curr[0];
-  v_curr[1] <= v_curr[0][22] ? 23'h00000 : v_curr[0][21] ? 23'h1FFFFF : v_curr[0];
+  z_curr[1] <= z_curr[0];//[25] ? 26'h00000 : z_curr[0][24] ? 26'h7FFFF : z_curr[0];
+  r_curr[1] <= r_curr[0];//[15] ? 16'h0000 : r_curr[0][14] ? 16'h3FFF : r_curr[0];
+  g_curr[1] <= g_curr[0];//[16] ? 17'h00000 : g_curr[0][15] ? 17'h07FFF : g_curr[0];
+  b_curr[1] <= b_curr[0];//[15] ? 16'h0000 : b_curr[0][14] ? 16'h3FFF : b_curr[0];
+  u_curr[1] <= u_curr[0];//[22] ? 23'h00000 : u_curr[0][21] ? 23'h1FFFFF : u_curr[0];
+  v_curr[1] <= v_curr[0];//[22] ? 23'h00000 : v_curr[0][21] ? 23'h1FFFFF : v_curr[0];
   y_curr[2] <= y_curr[1];
   x_curr[2] <= x_curr[1];
   z_curr[2] <= z_curr[1];
@@ -125,12 +125,12 @@ begin
       POP: begin
         y_curr[0] = span_data[248:241]; y_end = span_data[240:233]; //[7:0]
         x_curr[0] = span_data[232:230];                      // [2:0]
-        z_curr[0] = {span_data[229], span_data[229:205]}; nz = {span_data[204], span_data[204:180]};    //[24:0] s.15.9
-        r_curr[0] = {span_data[179], span_data[179:165]}; nr = {span_data[164], span_data[164:150]};    //[14:0] s.5.9
-        g_curr[0] = {span_data[149], span_data[149:134]}; ng = {span_data[133], span_data[133:118]};    //[15:0] s.6.9
-        b_curr[0] = {span_data[117], span_data[117:103]};   nb = {span_data[102], span_data[102:88]};    //[14:0] s.5.9
-        u_curr[0] = {span_data[87], span_data[87:66]};   nu = {span_data[65], span_data[65:44]};    //[21:0] s.12.9
-        v_curr[0] = {span_data[43], span_data[43:22]};   nv = {span_data[21], span_data[21:0]};    //[21:0] s.12.9
+        z_curr[0] = {span_data[229], span_data[229:205]}; nz = {span_data[204], span_data[204], span_data[204:180]};    //[24:0] s.15.9
+        r_curr[0] = {span_data[179], span_data[179:165]}; nr = {span_data[164], span_data[164], span_data[164:150]};    //[14:0] s.5.9
+        g_curr[0] = {span_data[149], span_data[149:134]}; ng = {span_data[133], span_data[133], span_data[133:118]};    //[15:0] s.6.9
+        b_curr[0] = {span_data[117], span_data[117:103]}; nb = {span_data[102], span_data[102], span_data[102:88]};     //[14:0] s.5.9
+        u_curr[0] = {span_data[87], span_data[87:66]};    nu = { span_data[65],  span_data[65], span_data[65:44]};      //[21:0] s.12.9
+        v_curr[0] = {span_data[43], span_data[43:22]};    nv = { span_data[21],  span_data[21], span_data[21:0]};       //[21:0] s.12.9
         if(y_curr[0] < y_end)
         begin
           draw[0] <= 1; // Draw inclusive of y_begin
@@ -159,12 +159,12 @@ begin
           state <= IDLE;
         end
         y_curr[0] = y_curr[0] + 1;
-        z_curr[0] = z_add;
-        r_curr[0] = r_add;
-        g_curr[0] = g_add;
-        b_curr[0] = b_add;
-        u_curr[0] = u_add;
-        v_curr[0] = v_add;
+        z_curr[0] = z_add[25] ? 26'h00000 : z_add[24] ? 26'h7FFFF : z_add;
+        r_curr[0] = r_add[15] ? 16'h0000 : r_add[14] ? 16'h3FFF : r_add;
+        g_curr[0] = g_add[16] ? 17'h00000 : g_add[15] ? 17'h07FFF : g_add;
+        b_curr[0] = b_add[15] ? 16'h0000 : b_add[14] ? 16'h3FFF : b_add;
+        u_curr[0] = u_add[22] ? 23'h00000 : u_add[21] ? 23'h1FFFFF : u_add;
+        v_curr[0] = v_add[22] ? 23'h00000 : v_add[21] ? 23'h1FFFFF : v_add;
       end
       DRAW_BWD: begin
         if(y_curr[0] > y_end) // Draw inclusive of y_end
@@ -178,12 +178,12 @@ begin
           state <= IDLE;
         end
         y_curr[0] = y_curr[0] - 1;
-        z_curr[0] = z_sub;
-        r_curr[0] = r_sub;
-        g_curr[0] = g_sub;
-        b_curr[0] = b_sub;
-        u_curr[0] = u_sub;
-        v_curr[0] = v_sub;
+        z_curr[0] = z_sub[25] ? 26'h00000 : z_sub[24] ? 26'h7FFFF : z_sub;
+        r_curr[0] = r_sub[15] ? 16'h0000 : r_sub[14] ? 16'h3FFF : r_sub;
+        g_curr[0] = g_sub[16] ? 17'h00000 : g_sub[15] ? 17'h07FFF : g_sub;
+        b_curr[0] = b_sub[15] ? 16'h0000 : b_sub[14] ? 16'h3FFF : b_sub;
+        u_curr[0] = u_sub[22] ? 23'h00000 : u_sub[21] ? 23'h1FFFFF : u_sub;
+        v_curr[0] = v_sub[22] ? 23'h00000 : v_sub[21] ? 23'h1FFFFF : v_sub;
       end
     endcase
   end

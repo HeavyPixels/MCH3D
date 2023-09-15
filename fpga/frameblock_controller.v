@@ -91,9 +91,9 @@ begin
   if(draw_next)
   begin
     if(ram_sel)
-      ramb_id <= draw_id;
+      rama_id <= draw_id; //swapped!
     else
-      rama_id <= draw_id;
+      ramb_id <= draw_id;
   end
 end
 

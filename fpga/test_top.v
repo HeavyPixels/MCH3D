@@ -13,7 +13,7 @@ wire ram_cs_n;
 wire [3:0] ram_io;
 wire lcd_mode = 1;
 
-try_lcd_controller _try_lcd_controller(
+try_triangle_render try_triangle_render(
   .clk_in(clk_in),
   .lcd_d(lcd_d),
   .lcd_rst_n(lcd_rst_n),// NOTE: Assumed to be active LOW

@@ -54,7 +54,7 @@ Computes the final pixel value from the vertex colour interpolated by CalcLine, 
 
 Performs the rasterization of a single scanline of a triangle. This makes it responsible for the vertical interpolation of colour, texture coordinates and depth. Drawline also reads and writes to the Z-buffer to handle triangle occlusion. *(future: Z-buffer operations are moved to the Shader)*
 
-*Status: **Near Complete, Some tests***
+*Status: **Complete, Tested on Hardware***
 
 *Todo:*
 - Test
@@ -92,7 +92,7 @@ Because of the (semi-)serial nature of the RAM it has no "native" data width, an
 
 Reads triangles to be rendered from the Triangle FIFO and splits each triangle into scanlines, which it passes to Drawline. This makes it responsible for the horizontal interpolation of edges, colour, texture coordinates and depth. As the frameblocks are four scanlines wide, Calcline will produce up to four scanlines per triangle before either pushing the triangle back to the FIFO for the next frameblock, or the triangle is complete.
 
-*Status: **Near Complete, To be tested***
+*Status: **Completed, Tested on Hardware***
 
 ## Triangle FIFO
 - Output: **Calcline**
@@ -101,4 +101,4 @@ Reads triangles to be rendered from the Triangle FIFO and splits each triangle i
 Stores triangles to be drawn in a circular buffer. QuickSilver renders its output in strips of 4 x 240 pixels. Each strip is rendered completely and pushed to the LCD before rendering the next. This means that triangles spanning multiple strips must be stored (with their intermediate rendering state) for the next strip. This is the function of the Triangle FIFO.
 QuickSilver can render many more triangles than can fit in the Triangle FIFO directly, so it is required that new triangles are provided sorted horizontally by their leftmost vertex.
 
-*Status: **TODO***
+*Status: **Complete, Tested on Hardware***

@@ -42,7 +42,8 @@ end
 // The delay counter is 24 bits, which gives us a range of just under 350ms at 48MHz.
 // 24'h010000 is 1.365 ms, which is close enough to basically treat the upper byte as a slow millisecond counter.
 reg [24:0] delay_counter;
-assign delay_zero = delay_counter[24];
+assign delay_zero = delay_counter[24]; // Synth
+//assign delay_zero = delay_counter[16]; // Sim
 reg [7:0] delay_data;
 reg delay_write;
 

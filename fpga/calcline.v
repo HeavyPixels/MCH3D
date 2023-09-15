@@ -17,7 +17,7 @@ module calcline(
   input draw_ready
 );
 
-localparam IDLE=3'd0, PULL1=3'd1, PULL2=3'd2, PUSH1=3'd3, PUSH2=3'd4, WAIT=3'd5, NEXT=3'd6;
+localparam IDLE=4'd0, PULL1=4'd1, PULL2=4'd2, PULL3=4'd3, PUSH1=4'd4, PUSH2=4'd5, WAIT=4'd6, NEXT1=4'd7, NEXT2=4'd8;
 
 reg  [8:0] x_curr;     //   9.0
 reg  [8:0] x2;         //   9.0
@@ -45,13 +45,13 @@ reg  [9:0] reserved2;  //  10
 
 assign span_data = {
   y_start[16:9], y_end[16:9],
-  x_curr,
-  z_curr, nz,
-  r_curr, nr,
-  g_curr, ng,
-  b_curr, nb,
-  u_curr, nu,
-  v_curr, nv
+  x_curr[2:0],
+  1'b0, z_curr, nz,
+  1'b0, r_curr, nr,
+  1'b0, g_curr, ng,
+  1'b0, b_curr, nb,
+  1'b0, u_curr, nu,
+  1'b0, v_curr, nv
 };
 
 reg [17:0] y_start_add, y_end_add;  //s. 8.9
@@ -63,14 +63,14 @@ reg [14:0] b_add;                   //s. 5.9
 reg [21:0] u_add;                   //s.12.9
 reg [21:0] v_add;                   //s.12.9
 
-reg pop1, pop2;
+reg pop1, pop2, pop3;
 assign triangle_pull = pop1 | pop2;
 reg next_add;
 reg push1, push2;
 
 always@(posedge clk)
 begin
-  if(pop1)
+  if(pop2)
   begin
     {
       x_curr, x2, x3,
@@ -87,7 +87,7 @@ begin
       reserved1
     } <= triangle_rddata;
   end
-  else if(pop2)
+  else if(pop3)
   begin
     {
       mz, nz,
@@ -140,18 +140,22 @@ begin
       reserved2
     };
   end
-  triangle_push <= push1 | push2;
+  triangle_push <= (push1 | push2) & !rst;
 end
+
+reg [17:0] m_end_current;
 
 always@(posedge clk)
 begin
   y_start_add <= y_start + m1;
   if(x_curr+1 < x2)
-    y_end_add = y_end + m2;
+    m_end_current <= m2;
+  else
+    m_end_current <= m3;
   if(x_curr+1 == x2)
     y_end_add = {y2, 9'h000};
-  if(x_curr+1 > x2)
-    y_end_add = y_end + m3;
+  else 
+    y_end_add = y_end + m_end_current;
   x_add <= x_curr + 1;
   z_add <= z_curr + mz;
   r_add <= r_curr + mr;
@@ -168,12 +172,12 @@ begin
     draw_id <= 7'h00;
     draw_next <= 0;
   end
-  else if(end_frameblock & pop2)
+  else if(end_frameblock & pop3)
   begin
     draw_id <= draw_id + 7'h01;
     draw_next <= 1;
   end
-  else if(end_frame & pop2)
+  else if(end_frame & pop3)
   begin
     draw_id <= 7'h00;
     draw_next <= 1;
@@ -184,9 +188,9 @@ begin
   end
 end
 
-reg [2:0] state;
+reg [3:0] state;
 
-wire active = x_curr[8:2] == draw_id;
+wire active = (x_curr[8:2] == draw_id) && !(end_frameblock | end_frame);
 wire current = x3 > {draw_id, 2'h3};
 
 always@(posedge clk)
@@ -206,23 +210,29 @@ begin
         state <= PULL2;
       end
       PULL2: begin
-        if(end_frameblock)
-          state <= IDLE;
-        else
+        state <= PULL3;
+      end
+      PULL3: begin
+        //if(end_frameblock | end_frame)
+        //  state <= IDLE;
+        //else
           state <= WAIT;
       end
       WAIT: begin
         if(span_done)
         begin
           if(active)
-            state <= NEXT;
+            state <= NEXT1;
           else if(current)
             state <= PUSH1;
           else
             state <= IDLE;
         end
       end
-      NEXT: begin
+      NEXT1: begin
+        state <= NEXT2;
+      end
+      NEXT2: begin
         state <= WAIT;
       end
       PUSH1: begin
@@ -239,27 +249,31 @@ always@*
 begin
   pop1 = 0;
   pop2 = 0;
+  pop3 = 0;
   push1 = 0;
   push2 = 0;
   span_start = 0;
   next_add = 0;
   case(state)
-    IDLE: begin
-      ;
-    end
+    //IDLE: begin
+    //  ;
+    //end
     PULL1: begin
       pop1 = 1;
     end
     PULL2: begin
       pop2 = 1;
-      if(active)
-        span_start = 1;
     end
-    WAIT: begin
-      ;
+    PULL3: begin
+      pop3 = 1;
     end
-    NEXT: begin
+    //WAIT: begin
+    //  ;
+    //end
+    NEXT1: begin
       span_start = 1;
+    end
+    NEXT2: begin
       next_add = 1;
     end
     PUSH1: begin

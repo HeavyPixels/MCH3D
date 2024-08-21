@@ -5,6 +5,7 @@ module top (
   //input spi_clk,
   //input spi_cs_n,
   //input spi_mosi,
+  output irq_n,
 
   output [7:0] lcd_d,
   output lcd_rst_n,// NOTE: Assumed to be active LOW
@@ -127,9 +128,7 @@ command_fifo _command_fifo(
   .empty(command_empty)
 );*/
 
-fifo_arbiter #(
-  .WIDTH(240)
-) triangle_fifo_arbiter (
+fifo_arbiter triangle_fifo_arbiter (
   .clk(clk),
   .rst(rst),
   .wrdata_a(calcline_triangle_wrdata),

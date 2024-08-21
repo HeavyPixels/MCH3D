@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "clipping.h"
+#include "precalc.h"
 
 #ifndef max
     #define max(a,b) (((a) > (b)) ? (a) : (b))
@@ -37,50 +38,6 @@ void set_poly_aabb(Polygon* poly) {
     poly->max.y = ymax;
     poly->max.z = zmax;
 }
-
-Polygon* top_polygon(PolyList* list) {
-    while (list->num >= POLYLIST_MAX) list = list->next;
-    return &(list->polys[list->num]);
-}
-
-void add_polygon_count(PolyList* list) {
-    while (list->num >= POLYLIST_MAX) list = list->next;
-    list->num += 1;
-    if (list->num >= POLYLIST_MAX) {
-       
-        list->next = (PolyList*)malloc(sizeof(PolyList));
-        list->next->num = 0;
-    }
-}
-
-void clear_list(PolyList* list) {
-    if (list->num < POLYLIST_MAX) {
-        list->num = 0;
-        return;
-    }
-    list->num = 0;
-    list = list->next;
-    while (list->num >= POLYLIST_MAX) {
-        PolyList* next = list->next;
-        free(list);
-        list = next;
-    }
-    free(list);
-}
-
-/*PolyList* insert_item(PolyList* node, Polygon* poly) {
-    PolyList* new_node = (PolyList*)malloc(sizeof(PolyList));
-    new_node->poly = poly;
-    new_node->next = node->next;
-    node->next = new_node;
-    return new_node;
-}
-
-void remove_child(PolyList* node) {
-    PolyList* child = node->next;
-    node->next = child->next;
-    free(child);
-}*/
 
 inline float clamp(float val, float min, float max) {
     return (val < min) ? min : (val > max) ? max : val;
@@ -169,52 +126,22 @@ Polygon* clip_to_new_polygon(Polygon* poly, Coord min, Coord max) {
     }
 }
 
-void offset_polygon(Polygon* poly, Coord min) {
-    for (int i = 0; i < poly->num; i++) {
-        poly->verts[i].x -= min.x;
-        poly->verts[i].y -= min.y;
-    }
-}
-
-void tile_polygon(Polygon* poly, PolyList* tiles) {
-    // Determine range of tiles to evaluate
-    // Max uses ceil-1 to ensure edges fall inside the tile
-    int mintx = max((int)floorf(poly->min.x / 32.0f), 0);
-    int maxtx = min((int)ceilf(poly->max.x / 32.0f) - 1, 9);
-    int minty = max((int)floorf(poly->min.y / 32.0f), 0);
-    int maxty = min((int)ceilf(poly->max.y / 32.0f) - 1, 7);
-
-    // Current "naive" algorithm:
-    // - Test every tile within bounding rect
-    // Future, better algortihm:
-    // - Start at top vertex
-    // - Move right until reject
-    // - Move left until reject
-    // - Test down from leftmost point:
-    //   - If not rejected: repeat from here
-    //   - Else: test rightmost point:
-    //     - If not rejected: repeat from here
-    //     - Else: DONE
-    for (int ty = minty; ty <= maxty; ty++) {
-        for (int tx = mintx; tx <= maxtx; tx++) {
-            Coord min = { .x = tx * 32, .y = ty * 32 };
-            Coord max = { .x = (tx+1) * 32, .y = (ty+1) * 32 };
-            int tid = ty * 10 + tx;
-            Polygon* p = top_polygon(&tiles[tid]);
-            if (clip_polygon(poly, min, max, p)){
-                offset_polygon(p, min);
-                add_polygon_count(&tiles[tid]);
-            }
+void tile_polygon(Polygon* poly, TriList* frameblocks) {
+    Coord min = {.x = 0, .y = 0};
+    Coord max = {.x = 320, .y = 240};
+    Polygon clipped;
+    if (clip_polygon(poly, min, max, &clipped)){
+        for (int i = 2; i < poly->num; i++) {            
+            precalc(&(poly->verts[0]), &(poly->verts[i-1]), &(poly->verts[i]), frameblocks);
         }
     }
 }
 
-
-void tile_polygons(PolyList* list, PolyList* tiles) {
+void tile_polygons(PolyList* list, TriList* frameblocks) {
     int j = 0;
     while (j < list->num) {
         Polygon* poly = &(list->polys[j]);
-        tile_polygon(poly, tiles);
+        tile_polygon(poly, frameblocks);
         j++;
         if (j >= POLYLIST_MAX) {
             list = list->next;

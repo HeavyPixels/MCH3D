@@ -5,7 +5,7 @@ module calcline(
   input [239:0] triangle_rddata,
   input triangle_empty,
   output triangle_pull,
-  output reg [239:0] triangle_wrdata,
+  output reg [479:0] triangle_wrdata,
   output reg triangle_push,
   // DrawLine
   output [248:0] span_data,
@@ -66,7 +66,7 @@ reg [21:0] v_add;                   //s.12.9
 reg pop1, pop2, pop3;
 assign triangle_pull = pop1 | pop2;
 reg next_add;
-reg push1, push2;
+reg push;
 
 always@(posedge clk)
 begin
@@ -111,7 +111,7 @@ begin
     u_curr <= u_add;
     v_curr <= v_add;
   end
-  else if(push1)
+  else if(push)
   begin
     triangle_wrdata <= {
       x_curr, x2, x3,
@@ -125,12 +125,7 @@ begin
       v_curr,
       end_frameblock,
       end_frame,
-      reserved1
-    };
-  end
-  else if(push2)
-  begin
-    triangle_wrdata <= {
+      reserved1,
       mz, nz,
       mr, nr,
       mg, ng,
@@ -140,7 +135,7 @@ begin
       reserved2
     };
   end
-  triangle_push <= (push1 | push2) & !rst;
+  triangle_push <= push & !rst;
 end
 
 reg [17:0] m_end_current;
@@ -250,8 +245,7 @@ begin
   pop1 = 0;
   pop2 = 0;
   pop3 = 0;
-  push1 = 0;
-  push2 = 0;
+  push = 0;
   span_start = 0;
   next_add = 0;
   case(state)
@@ -277,11 +271,11 @@ begin
       next_add = 1;
     end
     PUSH1: begin
-      push1 = 1;
+      push = 1;
     end
-    PUSH2: begin
-      push2 = 1;
-    end
+    //PUSH2: begin
+    //  ;
+    //end
   endcase
 end
 

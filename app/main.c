@@ -115,6 +115,7 @@ void app_main() {
 #if PAX_DEBUG
     pax_buf_init(&buf, NULL, 320, 240, PAX_BUF_16_565RGB);
     pax_background(&buf, black);
+    println("HENK!");
 #else
     // Set and reset the LCD driver to ensure it is reset and in FPGA mode
     ili9341_init(get_ili9341());
@@ -129,7 +130,7 @@ void app_main() {
 #endif
 
     if(!qsapp_init()) exit_to_launcher();
-
+    
     qs_button_state button;
     uint64_t prev = esp_timer_get_time();
     bool c = true;

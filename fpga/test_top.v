@@ -8,9 +8,9 @@ wire lcd_rst_n;
 wire lcd_cs_n;
 wire lcd_rs;
 wire lcd_wr_n;
-wire ram_clk;
-wire ram_cs_n;
-wire [3:0] ram_io;
+//wire ram_clk;
+//wire ram_cs_n;
+//wire [3:0] ram_io;
 wire lcd_mode = 1;
 
 try_triangle_render try_triangle_render(
@@ -20,9 +20,9 @@ try_triangle_render try_triangle_render(
   .lcd_cs_n(lcd_cs_n), // NOTE: Assumed to be active LOW
   .lcd_rs(lcd_rs), // NOTE: Assumed to be LOW for command, HIGH for data
   .lcd_wr_n(lcd_wr_n), // NOTE: Assumed to be triggered on RISING EDGE
-  .ram_clk(ram_clk),
-  .ram_cs_n(ram_cs_n),
-  .ram_io(ram_io),
+  //.ram_clk(ram_clk),
+  //.ram_cs_n(ram_cs_n),
+  //.ram_io(ram_io),
   .lcd_mode(lcd_mode)
 );
 
@@ -33,7 +33,7 @@ begin
   clk_in = 1'b0;
   #42;
 end
-
+/*
 // Memory Stub
 reg [7:0] cmd;
 reg cmd_count = 0;
@@ -97,5 +97,5 @@ begin
     end
   end
 end
-
+*/
 endmodule

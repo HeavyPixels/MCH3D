@@ -1,22 +1,24 @@
 module try_triangle_render (
   input  clk_in,
   
-  // CPU Communication. Will be restored later
-  //input spi_clk,
-  //input spi_cs_n,
-  //input spi_mosi,
+  // CPU Communication
+  input spi_clk,
+  input spi_cs_n,
+  input spi_mosi,
+  //output irq_n,
+  input lcd_mode, // HIGH when LCD access is allowed
 
+  // LCD
   output [7:0] lcd_d,
-  output lcd_rst_n,// NOTE: Assumed to be active LOW
-  output lcd_cs_n, // NOTE: Assumed to be active LOW
-  output lcd_rs, // NOTE: Assumed to be LOW for command, HIGH for data
-  output lcd_wr_n, // NOTE: Assumed to be triggered on RISING EDGE
+  output lcd_rst_n,
+  output lcd_cs_n,
+  output lcd_rs, // LOW for command, HIGH for data
+  output lcd_wr_n // Triggered on RISING EDGE
   
-  output ram_clk,
-  output ram_cs_n,
-  inout [3:0] ram_io,
-  
-  input lcd_mode
+  // RAM
+  //output ram_clk,
+  //output ram_cs_n,
+  //inout [3:0] ram_io
 );
 
 reg clk = 0;
@@ -59,10 +61,15 @@ begin
   rst <= pll_lock & !reset_done; // Reset on rising edge of pll_lock
 end
 
-
-wire [239:0] spi_triangle_wrdata;
+wire [7:0] command_wrdata;
+wire command_full;
+wire command_push;
+wire [7:0] command_rddata;
+wire command_pull;
+wire command_empty;
+wire [479:0] spi_triangle_wrdata;
 wire spi_triangle_push;
-wire [239:0] calcline_triangle_wrdata;
+wire [479:0] calcline_triangle_wrdata;
 wire calcline_triangle_push;
 wire [239:0] triangle_wrdata;
 wire triangle_push;
@@ -114,11 +121,21 @@ frameblock_ram zbuf (
 /*spi_controller _spi_controller (
   .spi_clk(spi_clk),
   .spi_cs(~spi_cs_n),
-  .spi_data(spi_mosi),
+  .spi_mosi(spi_mosi),
   .clk(clk),
   .rst(rst),
   .command_wrdata(command_wrdata),
   .command_push(command_push)
+);*/
+
+// FOR SERIAL VERSION
+triangle_tester _triangle_tester(
+  .clk(clk),
+  .rst(rst),
+  .triangle_full(command_full),
+  .triangle_wrdata(command_wrdata),
+  .triangle_push(command_push),
+  .draw_next(draw_next)
 );
 
 command_fifo _command_fifo(
@@ -130,8 +147,20 @@ command_fifo _command_fifo(
   .data_out(command_rddata),
   .pull(command_pull),
   .empty(command_empty)
-);*/
+);
 
+command_decoder _command_decoder(
+  .clk(clk),
+  .rst(rst),
+  .command_rddata(command_rddata),
+  .command_pull(command_pull),
+  .command_empty(command_empty),  
+  .triangle_full(triangle_full),
+  .triangle_wrdata(spi_triangle_wrdata),
+  .triangle_push(spi_triangle_push),
+  .draw_next(draw_next)
+);
+/* FOR PARALLEL VERSION
 triangle_tester _triangle_tester(
   .clk(clk),
   .rst(rst),
@@ -140,10 +169,8 @@ triangle_tester _triangle_tester(
   .triangle_push(spi_triangle_push),
   .draw_next(draw_next)
 );
-
-fifo_arbiter #(
-  .WIDTH(240)
-) triangle_fifo_arbiter (
+*/
+fifo_arbiter triangle_fifo_arbiter (
   .clk(clk),
   .rst(rst),
   .wrdata_a(calcline_triangle_wrdata),

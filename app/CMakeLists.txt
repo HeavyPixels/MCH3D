@@ -10,6 +10,9 @@ idf_component_register(
          "clipping.c"
          "st_nicc.c"
          "qsapp.c"
+         "bitval.c"
+         "types.c"
+         "precalc.c"
     INCLUDE_DIRS "."
                  "include"
     EMBED_FILES ${project_dir}/resources/fpga.bin

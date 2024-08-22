@@ -159,12 +159,11 @@ begin
     EFB1: begin
       triangle_wrdata = triangle_data[3][8*output_counter+:8];
       triangle_push = 1;
+    end
+    EFB2: begin
       efb_ready_clear = 1;
       efb_sub = 1;
     end
-    //EFB2: begin
-    //  ;
-    //end
     EF1: begin
       triangle_wrdata = triangle_data[4][8*output_counter+:8];
       triangle_push = 1;

@@ -15,7 +15,7 @@ module lcd_controller (
 reg [8:0] tile_command_data;
 
 reg [7:0] rom_addr;
-wire [8:0] rom_data;
+wire [8:0] rom_data;// = 9'h100;
 
 init_rom _init_rom(
   .rd_clk_i(clk),
@@ -27,7 +27,7 @@ init_rom _init_rom(
 );
 
 wire delay_zero;
-assign init_done = rom_addr[7];
+wire init_done = rom_addr[7];
 
 wire do_count = lcd_command_pull & delay_zero & ~init_done & lcd_ready;
 
@@ -70,40 +70,50 @@ reg expect_delay;
 //         Clears the reset pin
 // 9'h1FF: Delay
 //         The next byte indicates the upper byte of the delay counter.
-always@(posedge clk)
+always@(posedge clk or posedge rst)
 begin
-  delay_write = 0;
-  if(lcd_command_pull)
+  if(rst)
   begin
-    if(init_done)
+    delay_write = 0;
+    lcd_command_data <= 9'h100;
+    expect_delay = 0;
+    lcd_rst <= 1;
+  end
+  else
+  begin    
+    delay_write = 0;
+    if(lcd_command_pull)
     begin
-      lcd_command_data <= tile_command_data;
-    end
-    else if(delay_zero)
-    begin
-      if(expect_delay)
+      if(init_done)
       begin
-        delay_data <= rom_data[7:0];
-        delay_write = 1;
-        expect_delay = 0;
+        lcd_command_data <= tile_command_data;
       end
-      else case(rom_data)
-        9'h1FD: begin // Set Reset
-          lcd_rst <= 1;
-          lcd_command_data <= 9'h100;
+      else if(delay_zero)
+      begin
+        if(expect_delay)
+        begin
+          delay_data <= rom_data[7:0];
+          delay_write = 1;
+          expect_delay = 0;
         end
-        9'h1FE: begin // Clear Reset
-          lcd_rst <= 0;
-          lcd_command_data <= 9'h100;
-        end
-        9'h1FF: begin // Delay
-          expect_delay = 1;
-          lcd_command_data <= 9'h100;
-        end
-        default: begin
-          lcd_command_data <= rom_data;
-        end
-      endcase
+        else case(rom_data)
+          9'h1FD: begin // Set Reset
+            lcd_rst <= 1;
+            lcd_command_data <= 9'h100;
+          end
+          9'h1FE: begin // Clear Reset
+            lcd_rst <= 0;
+            lcd_command_data <= 9'h100;
+          end
+          9'h1FF: begin // Delay
+            expect_delay = 1;
+            lcd_command_data <= 9'h100;
+          end
+          default: begin
+            lcd_command_data <= rom_data;
+          end
+        endcase
+      end
     end
   end
 end

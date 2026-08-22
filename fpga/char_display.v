@@ -12,7 +12,7 @@ module char_display (
   //output [15:0] draw_rddata,
   //input [9:0] draw_rdaddr,
   output reg [6:0] draw_id,
-  output draw_next,
+  output reg draw_next,
   input draw_ready
 );
 
@@ -34,9 +34,9 @@ char_ram _char_ram (
 );
 
 wire [7:0] font_rddata;
-wire [9:0] font_rdaddr;
+wire [10:0] font_rdaddr;
 
-font_rom _font_rom (
+bitfont_rom _font_rom (
   .rd_clk_i (clk), 
   .rst_i (rst), 
   .rd_en_i (1'h1), 
@@ -54,33 +54,40 @@ reg [7:0] render_y2;
 reg draw_we2;
 reg draw_we1;
 
-reg wait_state;
-
-assign draw_next = render_x[2];
+reg [3:0] wait_state;
 
 always@(posedge clk)
 begin
   if(rst)
   begin
-    wait_state <= 0;
+    wait_state <= 4'b0000;
     draw_id <= 7'h00;
     render_x <= 3'h0;
     render_y <= 8'h00;
+    draw_next <= 0;
   end
   else
   begin
-    if(wait_state)
-    begin
-      if(draw_ready) wait_state <= 0;
+    draw_next <= wait_state[1];
+    
+    if(!wait_state[3] || draw_ready)
+    begin  
+      wait_state[3:1] <= wait_state[2:0];
     end
-    else if(render_x[2])
+    
+    wait_state[0] <= render_x[2];
+    
+    if(wait_state[3] && draw_ready)
     begin
-      render_x <= 3'h0;
-      wait_state <= 1;
       if(draw_id < 'h4F)
         draw_id <= draw_id + 1;
       else
         draw_id <= 0;
+    end
+    
+    if(render_x[2] || wait_state)
+    begin
+      render_x <= 3'h0;
     end
     else
     begin
@@ -95,28 +102,29 @@ begin
 end
 
 assign char_rdaddr = {render_y[7:3], draw_id[5:1]};
-assign font_rdaddr = {char_rddata[6:0], render_y1[2:0]};
-reg pixel_color;
-
-always@(posedge clk) pixel_color <= char_rddata[7];
+assign font_rdaddr = {char_rddata[7:0], render_y1[2:0]};
 
 // Note: This addressing mirrors the bits from the usual writing order (MSb left) for display (MSb right)
 // So a font row 'b00110101 will be rendered as #.#.##..
 // By a "happy accident", this is also how the font is specified.
 wire pixel = font_rddata[{draw_id[0], render_x2[1:0]}];
+wire pixel_color = draw_id[0];
 
 always@(posedge clk)
 begin
-  if(pixel)
+  if(pixel & !draw_id[6])
   begin
-    if(pixel_color)
+    if(!pixel_color)
       draw_wrdata <= 16'hFFFF;
     else
       draw_wrdata <= 16'hE5A3;
   end
   else
   begin
-    draw_wrdata <= 16'h0000;
+    if(!pixel_color)
+      draw_wrdata <= 16'h49E1;
+    else
+      draw_wrdata <= 16'h0000;
   end
   draw_wraddr <= {render_x2[1:0], render_y2};
   draw_we2 <= !wait_state & !render_x[2];

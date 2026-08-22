@@ -1,5 +1,12 @@
+/*
+ * qs_core.h - GPU commands for the MCH badge demo.
+ *
+ */
+
 #pragma once
 
-void qs_send_tile(int id_x, int id_y);
-void qs_send_vertex(int v_id, int x, int y, int z, int r, int g, int b);
-void qs_send_triangle(int v1, int v2, int v3);
+#include "types.h"
+
+void qs_send_triangle_block(TriangleBlock* t);
+void qs_send_end_frameblock();
+void qs_send_end_frame();

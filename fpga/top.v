@@ -1,10 +1,11 @@
 module top (
   input  clk_in,
   
-  // CPU Communication. Will be restored later
-  //input spi_clk,
-  //input spi_cs_n,
-  //input spi_mosi,
+  // CPU Communication
+  input spi_clk,
+  input spi_cs_n,
+  input spi_mosi,
+  output irq_n,
 
   output [7:0] lcd_d,
   output lcd_rst_n,// NOTE: Assumed to be active LOW
@@ -26,23 +27,32 @@ module top (
   .CLKHF   (clk)   // O
 );*/
 
-reg clk = 0;
-wire clk2;
+//reg clk = 0;
+wire clk;
 wire outcore_o;
 wire lock_o;
 
+// Sim only! Set .rst_n_i to 1'h1 for synthesis!
+//reg [2:0] pll_rst = 0;
+//always@(posedge clk_in)
+//begin
+//  if(!pll_rst[2])
+//    pll_rst <= pll_rst + 1;
+//end
+
 pll36 _pll (
   .ref_clk_i(clk_in), 
-  .rst_n_i(1'h1), 
+  //.rst_n_i(pll_rst[2]), // Sim
+  .rst_n_i(1'h1), // Synth
   .lock_o(lock_o), 
   .outcore_o(outcore_o), 
-  .outglobal_o(clk2)
+  .outglobal_o(clk)
 );
 
-always@(posedge clk2)
-begin
-  clk = ~clk;
-end
+//always@(posedge clk2)
+//begin
+//  clk = ~clk;
+//end
 
 // Reset generator
 reg pll_lock;
@@ -56,21 +66,26 @@ begin
   rst <= pll_lock & !reset_done; // Reset on rising edge of pll_lock
 end
 
-wire [239:0] spi_triangle_wrdata;
+wire [15:0] command_wrdata;
+wire command_push;
+wire command_full;
+wire [15:0] command_rddata;
+wire command_pull;
+wire command_empty;
+wire [479:0] spi_triangle_wrdata;
 wire spi_triangle_push;
-wire [239:0] calcline_triangle_wrdata;
+wire [479:0] calcline_triangle_wrdata;
 wire calcline_triangle_push;
-wire [239:0] triangle_wrdata;
+wire [119:0] triangle_wrdata;
 wire triangle_push;
 wire triangle_full;
-wire [239:0] triangle_rddata;
+wire [119:0] triangle_rddata;
 wire triangle_empty;
 wire triangle_pull;
 // CalcLine
-wire [248:0] span_data;
+wire [249:0] span_data;
 wire span_start;
 wire span_done;
-wire draw_next;
 // ZBuffer
 wire [15:0] zbuf_wrdata;
 wire [9:0] zbuf_wraddr;
@@ -81,9 +96,18 @@ wire [9:0] zbuf_rdaddr;
 wire [15:0] draw_wrdata;
 wire [9:0] draw_wraddr;
 wire draw_we;
-wire [15:0] draw_rddata;
-wire [ 9:0] draw_rdaddr;
+//wire [15:0] draw_rddata;
+//wire [ 9:0] draw_rdaddr;
+wire [ 6:0] draw_id;
+wire        draw_next;
 wire        draw_ready;
+// Texture RAM
+wire [11:0] texture_u;
+wire [11:0] texture_v;
+wire [15:0] texture_pixel_out;
+wire [13:0] texture_write_addr;
+wire [15:0] texture_write_data;
+wire texture_write;
 // LCD Driver
 wire [15:0] display_rddata;
 wire [ 9:0] display_rdaddr;
@@ -106,15 +130,24 @@ frameblock_ram zbuf (
   .rd_data_o( zbuf_rddata )
 );
 
-/*spi_controller _spi_controller (
+spi_controller _spi_controller (
   .spi_clk(spi_clk),
   .spi_cs(~spi_cs_n),
-  .spi_data(spi_mosi),
+  .spi_mosi(spi_mosi),
   .clk(clk),
   .rst(rst),
   .command_wrdata(command_wrdata),
   .command_push(command_push)
 );
+
+/*triangle_tester _triangle_tester (
+  .clk(clk),
+  .rst(rst),
+  .triangle_full(command_full),
+  .triangle_wrdata(command_wrdata),
+  .triangle_push(command_push),
+  .draw_next(draw_next)
+);*/
 
 command_fifo _command_fifo(
   .clk(clk),
@@ -125,11 +158,29 @@ command_fifo _command_fifo(
   .data_out(command_rddata),
   .pull(command_pull),
   .empty(command_empty)
-);*/
+);
 
-fifo_arbiter #(
-  .WIDTH(240)
-) triangle_fifo_arbiter (
+command_decoder _command_decoder (
+  .clk(clk),
+  .rst(rst),
+  // Command input
+  .command_rddata(command_rddata),
+  .command_pull(command_pull),
+  .command_empty(command_empty),
+  
+  // Triangle output
+  .triangle_full(triangle_full),
+  .cmd_triangle_wrdata(spi_triangle_wrdata),
+  .triangle_push(spi_triangle_push),
+  .draw_next(draw_next),
+  
+  // Texture output
+  .texture_wraddr(texture_write_addr),
+  .texture_wrdata(texture_write_data),
+  .texture_write(texture_write)
+);
+
+fifo_arbiter triangle_fifo_arbiter (
   .clk(clk),
   .rst(rst),
   .wrdata_a(calcline_triangle_wrdata),
@@ -140,20 +191,30 @@ fifo_arbiter #(
   .push_out(triangle_push)
 );
 
-assign triangle_full = !triangle_empty;
-basicfifo #(
+//assign triangle_full = !triangle_empty;
+/*basicfifo #(
   .WIDTH(240),
-  .LOG_DEPTH(8)//,
-//  .ALMOST_FULL(1)
+  .LOG_DEPTH(8),
+  .ALMOST_FULL(240)
 ) triangle_fifo(
   .clk(clk),
   .rst(rst),
   .data_in(triangle_wrdata),
   .push(triangle_push),
-  //.almost_full(triangle_full),
+  .almost_full(triangle_full),
   .data_out(triangle_rddata),
   .pull(triangle_pull),
   .empty(triangle_empty)
+);*/
+triangle_fifo _triangle_fifo(
+  .clk(clk),
+  .rst(rst),
+  .data_in(triangle_wrdata),
+  .push(triangle_push),
+  .almost_full(triangle_full),
+  .data_out(triangle_rddata),
+  .pull(triangle_pull),
+  .almost_empty(triangle_empty)
 );
 
 calcline _calcline(
@@ -163,7 +224,7 @@ calcline _calcline(
   .triangle_rddata(triangle_rddata),
   .triangle_empty(triangle_empty),
   .triangle_pull(triangle_pull),
-  .triangle_wrdata(calcline_triangle_wrdata),
+  .calc_triangle_wrdata(calcline_triangle_wrdata),
   .triangle_push(calcline_triangle_push),
   // DrawLine
   .span_data(span_data),
@@ -174,6 +235,17 @@ calcline _calcline(
   .draw_next(draw_next),
   .draw_ready(draw_ready)
 );
+
+
+wire [8:0] shader_r;
+wire [9:0] shader_g;
+wire [8:0] shader_b;
+wire shader_tex_en;
+wire [11:0] shader_u;
+wire [11:0] shader_v;
+wire [1:0] shader_x;
+wire [7:0] shader_y;
+wire shader_we;
 
 drawline _drawline(
   .clk(clk),
@@ -189,9 +261,52 @@ drawline _drawline(
   .zbuf_rddata(zbuf_rddata),
   .zbuf_rdaddr(zbuf_rdaddr),
   // Frameblock
+  //.draw_wrdata(draw_wrdata),
+  //.draw_wraddr(draw_wraddr),
+  //.draw_we(draw_we)
+  // Shader
+  .shader_r(shader_r),
+  .shader_g(shader_g),
+  .shader_b(shader_b),
+  .shader_tex_en(shader_tex_en),
+  .shader_u(shader_u),
+  .shader_v(shader_v),
+  .shader_x(shader_x),
+  .shader_y(shader_y),
+  .shader_we(shader_we)
+);
+
+texture_ram _texture_ram (
+   .clk(clk),
+   .rst(rst),
+   .u(texture_u),
+   .v(texture_v),
+   .pixel_out(texture_pixel_out),
+   .write_addr(texture_write_addr),
+   .write_data(texture_write_data),
+   .write(texture_write)
+);
+
+shader _shader (
+  .clk(clk),
+  .rst(rst),
+  .r(shader_r),
+  .g(shader_g),
+  .b(shader_b),
+  .tex_en(shader_tex_en),
+  .u(shader_u),
+  .v(shader_v),
+  .x(shader_x),
+  .y(shader_y),
+  .we(shader_we),
+  // Texture
+  .texture_u(texture_u),
+  .texture_v(texture_v),
+  .texture_data(texture_pixel_out),
+  // Frameblock
   .draw_wrdata(draw_wrdata),
   .draw_wraddr(draw_wraddr),
-  .draw_we(draw_we)
+  .draw_we(draw_we) 
 );
 
 frameblock_controller _frameblock_controller (
@@ -200,8 +315,8 @@ frameblock_controller _frameblock_controller (
   .draw_wrdata(draw_wrdata),
   .draw_wraddr(draw_wraddr),
   .draw_we(draw_we),
-  .draw_rddata(draw_rddata),
-  .draw_rdaddr(draw_rdaddr),
+  //.draw_rddata(draw_rddata),
+  .draw_rdaddr(0), //unconnected
   .draw_id(draw_id),
   .draw_next(draw_next),
   .draw_ready(draw_ready),
@@ -242,6 +357,7 @@ lcd_driver _lcd_driver (
 	.lcd_wr(i_lcd_wr),
 	.lcd_ready(lcd_ready)
 );
+
 
 assign lcd_rst_n = lcd_ready ? i_lcd_rst : 1'bz;
 assign lcd_cs_n = lcd_ready ? i_lcd_cs : 1'bz;

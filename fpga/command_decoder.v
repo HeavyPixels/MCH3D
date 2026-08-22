@@ -1,3 +1,6 @@
+// Command Decoder
+// Decodes bytestream from CPU into commands and (triangle) data.
+
 // TODO:
 // - Adapt command input interface for FIFO
 // - Support back-pressure from Vertex FIFO
@@ -8,137 +11,175 @@
 module command_decoder (
   input clk,
   input rst,
-  input [7:0] command_rddata,
-  output command_pull,
+  // Command input
+  input [15:0] command_rddata,
+  output reg command_pull,
   input command_empty,
-  //Write interface
-  output reg [1:0] v_sel,
-  output [7:0] v_data,
-  output reg [2:0] v_addr,
-  output reg v_we,
-  //Command interface
-  output reg [7:0] command,
-  output [1:0] va_sel,
-  output [1:0] vb_sel,
-  output [1:0] vc_sel,
-  output reg write,
-  input vertices_almost_full
+  
+  // Triangle output
+  input triangle_full,
+  output [479:0] cmd_triangle_wrdata,
+  output reg triangle_push,
+  input draw_next,
+  
+  output reg [13:0] texture_wraddr,
+  output reg [15:0] texture_wrdata,
+  output reg texture_write
 );
 
-reg [7:0] decode_state;
-assign command_pull = !command_empty & !vertices_almost_full;
-reg did_pull;
+// Pull logic
+//assign command_pull = !command_empty & !triangle_full;
+  
+// Triangle data storage
+reg [479:0] triangle_data;
+reg [15:0] triangle_data_last_word;
+reg [4:0] triangle_data_count;
+reg last_word_select;
+wire triangle_ready = (triangle_data_count == 30);
 
-always@(posedge clk) did_pull <= command_pull;
+//assign triangle_push = triangle_ready;
+assign cmd_triangle_wrdata = {(last_word_select ? triangle_data_last_word : triangle_data[479:464]), triangle_data[463:0]};
+
+always@(posedge clk)
+begin
+  if(command_pull)
+  begin
+    triangle_data <= { triangle_data[463:0], command_rddata};
+    triangle_data_last_word <= command_rddata;
+  end
+end
+
+// Texture data
+reg [13:0] texture_wraddr_r;
+
+always@(posedge clk)
+begin
+  if(command_pull)
+  begin
+    texture_wraddr_r <= command_rddata[13:0];
+    texture_wraddr <= texture_wraddr_r;
+    texture_wrdata <= command_rddata;
+  end
+end
+
+localparam COMMAND_PULL=3'd0,
+           COMMAND_PARSE=3'd1,
+           TRIANGLE_PULL=3'd2,
+           TRIANGLE_PARSE=3'd3,
+           EFB_SEND=3'd4,
+           EFB_WAIT=3'd5,
+           TEXTURE_PULL=3'd6,
+           TEXTURE_PARSE=3'd7;
+           //WAIT=3'd5;
+
+reg [2:0] state;
+
+always@(posedge clk)
+begin
+  if(rst | state == COMMAND_PULL)
+    triangle_data_count <= 5'h00;
+  else if(command_pull)
+    triangle_data_count <= triangle_data_count + 1;
+end
+
 
 always@(posedge clk or posedge rst)
 begin
   if(rst)
-    decode_state <= 0;
+  begin
+    state <= 0;
+    triangle_push = 0;
+    last_word_select = 0;
+    command_pull = 0;
+    texture_write = 0;
+  end
   else
   begin
-    if(did_pull)
-    begin
-      case(decode_state)
-        4'h0: begin // Reset
-          casez(command_rddata[7:6])
-            2'b11: // Vertex 1 | 11VV----
-              decode_state <= 4'h1;
-            2'b01: // New Block 1 | 01------
-              decode_state <= 4'hB;
-          endcase
+    triangle_push = 0;
+    last_word_select = 0;
+    command_pull = 0;
+    texture_write = 0;
+    case(state)
+      COMMAND_PULL: begin
+        command_pull = !command_empty & !triangle_full;
+        if(command_pull)
+        begin
+          state <= COMMAND_PARSE;
         end
-        4'h1: begin // Vertex 2 | --XXXXXX
-          decode_state <= 4'h2;
+        else
+        begin
+          state <= COMMAND_PULL;
         end
-        4'h2: begin // Vertex 3 | YYYYYYZZ
-          decode_state <= 4'h3;
-        end
-        4'h3: begin // Vertex 4 | ZZZZZZZZ
-          decode_state <= 4'h4;
-        end
-        4'h4: begin // Vertex 5 | RRRRRGGG
-          decode_state <= 4'h5;
-        end
-        4'h5: begin // Vertex 6 | GGGBBBBB
-          decode_state <= 4'h0;
-        end
-        4'hB: begin // New Block 2 | -YYYXXXX
-          decode_state <= 4'h0;
-        end
-        default: begin
-          decode_state <= 4'h0;
-        end
-      endcase
-    end
-  end
-end
-
-reg v_sel_write;
-always@(posedge clk)
-begin
-  if(v_sel_write) v_sel <= command_rddata[5:4];
-end
-
-assign v_data = command_rddata;
-
-assign va_sel = command_rddata[5:4];
-assign vb_sel = command_rddata[3:2];
-assign vc_sel = command_rddata[1:0];
-
-
-always@*
-begin
-  write = 0;
-  v_sel_write = 0;
-  v_addr = 3'hx;
-  v_we = 0;
-  command = 8'h00;
-  if(did_pull)
-  begin
-    case(decode_state)
-      4'h0: begin // Reset
-        casez(command_rddata[7:6])
-          2'b11: begin // Vertex 1 | 11VV....
-            v_sel_write = 1;
-          end
-          2'b10: begin // Triangle | 10AABBCC
-            write = 1;
-          end
-//          2'b01: begin // New Block 1 | 01------
-//            ;
-//          end
-//          2'b00: begin // Output control | 00-----E
-//            ;
-//          end
-        endcase
       end
-      4'h1: begin // Vertex 2 | --XXXXXX
-        v_addr = 3'h4;
-        v_we = 1;
+      COMMAND_PARSE: begin
+        if(command_rddata[15:14] == 2'h0)
+        begin
+          state <= TRIANGLE_PULL;
+        end
+        else if(command_rddata[15:14] == 2'h3)
+        begin
+          state <= TEXTURE_PULL;
+        end
+        else // Either EFB or EF, both are handled the same here
+        begin
+          state <= EFB_SEND;
+        end
       end
-      4'h2: begin // Vertex 3 | YYYYYYZZ
-        v_addr = 3'h3;
-        v_we = 1;
+      TRIANGLE_PULL: begin
+        command_pull = !command_empty & !triangle_full;
+        if(command_pull)
+        begin
+          state <= TRIANGLE_PARSE;
+        end
+        else
+        begin
+          state <= TRIANGLE_PULL;
+        end
       end
-      4'h3: begin // Vertex 4 | ZZZZZZZZ
-        v_addr = 3'h2;
-        v_we = 1;
+      TRIANGLE_PARSE: begin
+        if(triangle_data_count == 29)
+        begin
+          state <= COMMAND_PULL;
+          triangle_push = 1;
+        end
+        else
+        begin
+          state <= TRIANGLE_PULL;
+        end
       end
-      4'h4: begin // Vertex 5 | RRRRRGGG
-        v_addr = 3'h1;
-        v_we = 1;
+      EFB_SEND: begin
+        state <= EFB_WAIT;
+        last_word_select = 1;
+        triangle_push = 1;
       end
-      4'h5: begin // Vertex 6 | GGGBBBBB
-        v_addr = 3'h0;
-        v_we = 1;
+      EFB_WAIT: begin
+        if(draw_next)
+        begin
+          state <= COMMAND_PULL;
+        end
+        else
+        begin
+          state <= EFB_WAIT;
+        end
       end
-      4'hB: begin // New Block 2 | -YYYXXXX
-        command = {1'h1, command_rddata[6:0]};
-        write = 1;
+      TEXTURE_PULL: begin // Texture data
+        command_pull = !command_empty;
+        if(command_pull)
+        begin
+          state <= TEXTURE_PARSE;
+        end
+        else
+        begin
+          state <= TEXTURE_PULL;
+        end
+      end
+      TEXTURE_PARSE: begin // Texture data
+        state <= COMMAND_PULL;
+        texture_write = 1;
       end
     endcase
   end
 end
 
 endmodule
+

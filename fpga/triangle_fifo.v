@@ -1,36 +1,36 @@
 module triangle_fifo(
   input clk,
   input rst,
-  input [239:0] data_in,
+  input [119:0] data_in,
   input push,
   output full,
   output almost_full,
-  output [239:0] data_out,
+  output [119:0] data_out,
   input pull,
   output empty,
   output almost_empty
 );
 
 //reg [239:0] buffer [0:255];
-reg [8:0] wr_ptr;
-reg [8:0] rd_ptr;
+reg [9:0] wr_ptr;
+reg [9:0] rd_ptr;
 
 //assign data_out = buffer[rd_ptr[7:0]];
-wire [8:0] count = wr_ptr - rd_ptr;
+wire [9:0] count = wr_ptr - rd_ptr;
 
 assign empty = count == 0;
 assign almost_empty = count <= 1;
-assign almost_full = count >= 252;
-assign full = count[8];
+assign almost_full = count >= 504;
+assign full = count[9];
 
 pmi_ram_dp
 #(
-  .pmi_wr_addr_depth    (256), // integer
-  .pmi_wr_addr_width    (8), // integer
-  .pmi_wr_data_width    (240), // integer
-  .pmi_rd_addr_depth    (256), // integer
-  .pmi_rd_addr_width    (8), // integer
-  .pmi_rd_data_width    (240), // integer
+  .pmi_wr_addr_depth    (512), // integer
+  .pmi_wr_addr_width    (9), // integer
+  .pmi_wr_data_width    (120), // integer
+  .pmi_rd_addr_depth    (512), // integer
+  .pmi_rd_addr_width    (9), // integer
+  .pmi_rd_data_width    (120), // integer
   .pmi_regmode          ("noreg"), // "reg"|"noreg"
   .pmi_resetmode        ("sync"), // "async"|"sync"
   //.pmi_init_file        ( ), // string
@@ -38,8 +38,8 @@ pmi_ram_dp
   .pmi_family           ("iCE40UP")  // "iCE40UP"|"common"
 ) triangle_fifo_ram (
   .Data      (data_in),  // I:
-  .WrAddress (wr_ptr[7:0]),  // I:
-  .RdAddress (rd_ptr[7:0]),  // I:
+  .WrAddress (wr_ptr[8:0]),  // I:
+  .RdAddress (rd_ptr[8:0]),  // I:
   .WrClock   (clk),  // I:
   .RdClock   (clk),  // I:
   .WrClockEn (1'h1),  // I:
@@ -48,6 +48,19 @@ pmi_ram_dp
   .Reset     (rst),  // I:
   .Q         (data_out)   // O:
 );
+/*triangle_fifo_ram _triangle_fifo_ram(
+  .wr_clk_i(clk),
+  .rd_clk_i(clk),
+  .rst_i(rst),
+  .wr_clk_en_i(1'h1),
+  .rd_en_i(1'h1),
+  .rd_clk_en_i(1'h1),
+  .wr_en_i(push && !full),
+  .wr_data_i(data_in),
+  .wr_addr_i(wr_ptr[7:0]),
+  .rd_addr_i(rd_ptr[7:0]),
+  .rd_data_o(data_out)
+);*/
 
 always@(posedge clk)
 begin

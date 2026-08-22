@@ -31,6 +31,8 @@
 
 #include "main_debug.h"
 
+#include <unistd.h>
+
 
 // Exits the app, returning to the launcher.
 void exit_to_launcher();

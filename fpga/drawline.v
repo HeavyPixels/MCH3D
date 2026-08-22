@@ -2,7 +2,7 @@ module drawline(
   input clk,
   input rst,
   // CalcLine
-  input [248:0] span_data,
+  input [249:0] span_data,
   input span_start,
   output reg span_done,
   // ZBuffer
@@ -12,9 +12,19 @@ module drawline(
   input [15:0] zbuf_rddata,
   output [9:0] zbuf_rdaddr,
   // Frameblock
-  output reg [15:0] draw_wrdata,
-  output reg [9:0] draw_wraddr,
-  output reg draw_we
+  //output reg [15:0] draw_wrdata,
+  //output reg [9:0] draw_wraddr,
+  //output reg draw_we
+  // Shader
+  output reg [8:0] shader_r,
+  output reg [9:0] shader_g,
+  output reg [8:0] shader_b,
+  output reg shader_tex_en,
+  output reg [11:0] shader_u,
+  output reg [11:0] shader_v,
+  output reg [1:0] shader_x,
+  output reg [7:0] shader_y,
+  output reg shader_we
 );
 
 localparam IDLE=3'd0, POP=3'd1, DRAW_FWD=3'd2, DRAW_BWD=3'd3;
@@ -28,6 +38,7 @@ reg [16:0] g_curr[0:2], ng; // 1bit overflow + s. 6.9
 reg [15:0] b_curr[0:2], nb; // 1bit overflow + s. 5.9
 reg [22:0] u_curr[0:2], nu; // 1bit overflow + s.12.9
 reg [22:0] v_curr[0:2], nv; // 1bit overflow + s.12.9
+reg [0:2] tex_en;
 
 wire [25:0] z_add = z_curr[0] + nz; // o.s.15.9
 wire [15:0] r_add = r_curr[0] + nr; // o.s. 5.9
@@ -44,6 +55,7 @@ wire [22:0] v_sub = v_curr[0] - nv; // o.s.12.9
 
 always@(posedge clk)
 begin
+  tex_en[1] <= tex_en[0];
   y_curr[1] <= y_curr[0];
   x_curr[1] <= x_curr[0];
   z_curr[1] <= z_curr[0];//[25] ? 26'h00000 : z_curr[0][24] ? 26'h7FFFF : z_curr[0];
@@ -52,6 +64,7 @@ begin
   b_curr[1] <= b_curr[0];//[15] ? 16'h0000 : b_curr[0][14] ? 16'h3FFF : b_curr[0];
   u_curr[1] <= u_curr[0];//[22] ? 23'h00000 : u_curr[0][21] ? 23'h1FFFFF : u_curr[0];
   v_curr[1] <= v_curr[0];//[22] ? 23'h00000 : v_curr[0][21] ? 23'h1FFFFF : v_curr[0];
+  tex_en[2] <= tex_en[1];
   y_curr[2] <= y_curr[1];
   x_curr[2] <= x_curr[1];
   z_curr[2] <= z_curr[1];
@@ -78,7 +91,7 @@ end
 // In this case, y_begin is NOT drawn and y_end IS drawn.
 
 reg [1:0] state;
-reg [4:0] draw;
+reg [2:0] draw;
 
 
 // Z-buffer check
@@ -91,6 +104,7 @@ begin
   begin
     state <= IDLE;
     draw[0] <= 0;
+    tex_en[0] = 'hx;
     y_curr[0] = 'hx;
     z_curr[0] = 'hx;
     r_curr[0] = 'hx;
@@ -104,6 +118,7 @@ begin
     case(state)
       IDLE: begin
         draw[0] <= 0;
+        tex_en[0] = 'hx;
         y_curr[0] = 'hx;
         z_curr[0] = 'hx;
         r_curr[0] = 'hx;
@@ -123,25 +138,26 @@ begin
         end
       end
       POP: begin
+        tex_en[0] = span_data[249];
         y_curr[0] = span_data[248:241]; y_end = span_data[240:233]; //[7:0]
         x_curr[0] = span_data[232:230];                      // [2:0]
-        z_curr[0] = {span_data[229], span_data[229:205]}; nz = {span_data[204], span_data[204], span_data[204:180]};    //[24:0] s.15.9
-        r_curr[0] = {span_data[179], span_data[179:165]}; nr = {span_data[164], span_data[164], span_data[164:150]};    //[14:0] s.5.9
-        g_curr[0] = {span_data[149], span_data[149:134]}; ng = {span_data[133], span_data[133], span_data[133:118]};    //[15:0] s.6.9
-        b_curr[0] = {span_data[117], span_data[117:103]}; nb = {span_data[102], span_data[102], span_data[102:88]};     //[14:0] s.5.9
-        u_curr[0] = {span_data[87], span_data[87:66]};    nu = { span_data[65],  span_data[65], span_data[65:44]};      //[21:0] s.12.9
-        v_curr[0] = {span_data[43], span_data[43:22]};    nv = { span_data[21],  span_data[21], span_data[21:0]};       //[21:0] s.12.9
+        z_curr[0] = {span_data[229], span_data[229:205]}; nz = {/*span_data[204],*/ span_data[204], span_data[204:180]};    //[24:0] s.15.9
+        r_curr[0] = {span_data[179], span_data[179:165]}; nr = {/*span_data[164],*/ span_data[164], span_data[164:150]};    //[14:0] s.5.9
+        g_curr[0] = {span_data[149], span_data[149:134]}; ng = {/*span_data[133],*/ span_data[133], span_data[133:118]};    //[15:0] s.6.9
+        b_curr[0] = {span_data[117], span_data[117:103]}; nb = {/*span_data[102],*/ span_data[102], span_data[102:88]};     //[14:0] s.5.9
+        u_curr[0] = {span_data[87], span_data[87:66]};    nu = {/* span_data[65],*/  span_data[65], span_data[65:44]};      //[21:0] s.12.9
+        v_curr[0] = {span_data[43], span_data[43:22]};    nv = {/* span_data[21],*/  span_data[21], span_data[21:0]};       //[21:0] s.12.9
         if(y_curr[0] < y_end)
         begin
           draw[0] <= 1; // Draw inclusive of y_begin
           state <= DRAW_FWD;
         end
-        else if(y_curr[0] == y_end)
+        if(y_curr[0] == y_end)
         begin
           draw[0] <= 0;
           state <= IDLE;
         end
-        else //if(y_curr[0] > y_end)
+        if(y_curr[0] > y_end)
         begin
           draw[0] <= 0; // Draw exclusive of y_begin
           state <= DRAW_BWD;
@@ -158,6 +174,7 @@ begin
           draw[0] <= 0;
           state <= IDLE;
         end
+        tex_en[0] = tex_en[0];
         y_curr[0] = y_curr[0] + 1;
         z_curr[0] = z_add[25] ? 26'h00000 : z_add[24] ? 26'h7FFFF : z_add;
         r_curr[0] = r_add[15] ? 16'h0000 : r_add[14] ? 16'h3FFF : r_add;
@@ -177,6 +194,7 @@ begin
           draw[0] <= 0;
           state <= IDLE;
         end
+        tex_en[0] = tex_en[0];
         y_curr[0] = y_curr[0] - 1;
         z_curr[0] = z_sub[25] ? 26'h00000 : z_sub[24] ? 26'h7FFFF : z_sub;
         r_curr[0] = r_sub[15] ? 16'h0000 : r_sub[14] ? 16'h3FFF : r_sub;
@@ -195,26 +213,35 @@ begin
   draw[2] <= draw[1] && ((zbuf_rddata[15] != x_curr[0][2]) || (zbuf_rddata[14:0] >= z_curr[0][23:9]));
 end
 
-// Shading
-wire [4:0] pixel_r = r_curr[2][13:9];
-wire [5:0] pixel_g = g_curr[2][14:9];
-wire [4:0] pixel_b = b_curr[2][13:9];
+//wire [4:0] pixel_r = r_curr[2][13:9];
+//wire [5:0] pixel_g = g_curr[2][14:9];
+//wire [4:0] pixel_b = b_curr[2][13:9];
 
 // Output
 always@(posedge clk)
 begin
-  draw_wrdata <= {pixel_r, pixel_g, pixel_b};
-  draw_wraddr <= {x_curr[2][1:0], y_curr[2][7:0]};
+  //draw_wrdata <= {pixel_r, pixel_g, pixel_b};
+  //draw_wraddr <= {x_curr[2][1:0], y_curr[2][7:0]};
+  shader_r <= r_curr[2][13:5];
+  shader_g <= g_curr[2][14:5];
+  shader_b <= b_curr[2][13:5];
+  shader_u <= u_curr[2][20:9];
+  shader_v <= v_curr[2][20:9];
+  shader_tex_en <= tex_en[2];
+  shader_x <= x_curr[2][1:0];
+  shader_y <= y_curr[2][7:0];
   zbuf_wrdata <= {x_curr[2][2], z_curr[2][23:9]};
   zbuf_wraddr <= {x_curr[2][1:0], y_curr[2][7:0]};
   if(draw[2])
   begin
-    draw_we <= 1;
+    //draw_we <= 1;
+    shader_we <= 1;
     zbuf_we <= 1;
   end
   else
   begin
-    draw_we <= 0;
+    //draw_we <= 0;
+    shader_we <= 0;
     zbuf_we <= 0;
   end
 end

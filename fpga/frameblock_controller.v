@@ -1,7 +1,7 @@
 // Frameblock controller
-// The frameblock is a double-buffered (triple-buffered?) block of 32x32 pixels acting as a partial framebuffer. While triangles are drawn to one buffer, the other buffer is written to the screen.
-// On the drawing side, the dual-port ram block is exposed directly to allow for random pixel writes and read-modify-write operations. When the a block has finished drawing, the drawing controller sets the next block id and pulses the next signal. The drawing controller should wait until the ready signal is raised before accessing the new block.
-// On the display side, a 
+// The frameblock is a double-buffered block of 4 x 256 pixels acting as a partial framebuffer. While triangles are drawn to one buffer, the other buffer is written to the screen.
+// On the drawing side, the dual-port ram block is exposed directly to allow for random pixel writes and read-modify-write operations. When a block has finished drawing, the drawing controller sets the next block id and pulses the next signal. The drawing controller should wait until the ready signal is raised before accessing the new block.
+// On the display side, only ready access is available. The LCD controller reads the block id to determine which portion of the display to update. When a block has been fully transmitted to the display, the LCD controller pulses the next signal and should wait until the ready signal is raised before accessing the next block.
 module frameblock_controller (
   input clk,
   input rst,
@@ -91,9 +91,9 @@ begin
   if(draw_next)
   begin
     if(ram_sel)
-      rama_id <= draw_id; //swapped!
+      ramb_id <= draw_id; //re-re-swapped!
     else
-      ramb_id <= draw_id;
+      rama_id <= draw_id;
   end
 end
 

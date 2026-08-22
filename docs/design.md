@@ -87,7 +87,7 @@ Because of the (semi-)serial nature of the RAM it has no "native" data width, an
 *Stats: **Complete, Tested on Hardware***
 
 ## Calcline
-- Output: **Drawline**
+- Output: **Drawline**, **FIFO Arbiter**
 - Input: **Triangle FIFO**
 
 Reads triangles to be rendered from the Triangle FIFO and splits each triangle into scanlines, which it passes to Drawline. This makes it responsible for the horizontal interpolation of edges, colour, texture coordinates and depth. As the frameblocks are four scanlines wide, Calcline will produce up to four scanlines per triangle before either pushing the triangle back to the FIFO for the next frameblock, or the triangle is complete.
@@ -96,9 +96,33 @@ Reads triangles to be rendered from the Triangle FIFO and splits each triangle i
 
 ## Triangle FIFO
 - Output: **Calcline**
-- Input: **Calcline**, **Command Controller**
+- Input: **FIFO Arbiter**
 
 Stores triangles to be drawn in a circular buffer. QuickSilver renders its output in strips of 4 x 240 pixels. Each strip is rendered completely and pushed to the LCD before rendering the next. This means that triangles spanning multiple strips must be stored (with their intermediate rendering state) for the next strip. This is the function of the Triangle FIFO.
 QuickSilver can render many more triangles than can fit in the Triangle FIFO directly, so it is required that new triangles are provided sorted horizontally by their leftmost vertex.
 
 *Status: **Complete, Tested on Hardware***
+
+## FIFO Arbiter
+- Output: **Triangle FIFO**
+- Input: **Calcline**, **Command Controller**
+
+The Triangle FIFO only has one write input, but needs to store both new triangles coming from the Command Controller and partially processed triangles returning from CalcLine. The FIFO Arbiter interleaves both datastreams, giving priority to CalcLine.
+
+*Status: **Complete, Tested on Hardware***
+
+## Command Controller
+- Output: **FIFO Arbiter**
+- Input: **SPI Controller**
+
+Converts the raw datastream coming into the system via the SPI Controller into triangles, control codes and other data used in the system.
+
+*Status: **WIP***
+
+## SPI Controller
+- Output: **Command Controller**
+- Input: **external SPI bus**
+
+Acts as a mono-directional data controller for communication with the CPU. Note that the SPI Controller operates on two clocks the internal FPGA clock (36MHz) and the external SPI clock (up to 80MHz). This means that the SPI Controller acts as a clock domain transition.
+
+*Status: **Initial version complete, bidirectional communication is TODO***

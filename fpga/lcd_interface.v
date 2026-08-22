@@ -41,30 +41,32 @@ begin
 end
 
 // Output decoder
-always @*
+always @ (posedge clk)
 begin
   case (state)
     s0: begin // Reset, set data
       lcd_rs <= ~cmd;
-      lcd_wr <= 0;
+      lcd_wr <= ({cmd,data} == 9'h100); // Falling edge when setting data, keep high for NOP
       lcd_d <= data;
       lcd_command_pull <= 0;
     end
     s1: begin // Wait state
       lcd_rs <= ~cmd;
-      lcd_wr <= 0;
+      lcd_wr <= ({cmd,data} == 9'h100); // Low when setting data, keep high for NOP
       lcd_d <= data;
       lcd_command_pull <= 0;
     end
     s2: begin // Trigger WR
       lcd_rs <= ~cmd;
-      lcd_wr <= ({cmd,data} != 9'h100); // Active high, disabled for NOP
+      lcd_wr <= 1; // Rising edge to trigger write, keep high for NOP
+      //lcd_wr <= ({cmd,data} != 9'h100); // Active high, disabled for NOP
       lcd_d <= data;    
       lcd_command_pull <= 0;   
     end
     s3: begin  // Trigger WR, next command
       lcd_rs <= ~cmd;
-      lcd_wr <= ({cmd,data} != 9'h100); // Active high, disabled for NOP
+      lcd_wr <= 1; // Rising edge to trigger write, keep high for NOP
+      //lcd_wr <= ({cmd,data} != 9'h100); // Active high, disabled for NOP
       lcd_d <= data;    
       lcd_command_pull <= 1;  
     end

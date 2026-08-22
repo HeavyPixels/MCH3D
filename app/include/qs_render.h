@@ -1,5 +1,5 @@
 #pragma once
 
-#include "clipping.h"
+#include "types.h"
 
-void qs_render(PolyList* tiles);
+void qs_render(TriList* frameblocks);
